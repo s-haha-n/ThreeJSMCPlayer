@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
-import { RNG } from './rng';
+import { RNG } from './rng.js';
 import { blocks } from './blocks.js';
 
 const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshLambertMaterial();
 
-export class World extends THREE.Group {
+export class SimpleWorld extends THREE.Group {
   size = {
-    width: 32,
-    height: 16
+    width: 64,
+    height: 32 
   }
 
   /**
@@ -19,8 +19,8 @@ export class World extends THREE.Group {
     seed: 0,
     terrain: {
       scale: 30,
-      magnitude: 0.2,
-      offset: 0.5
+      magnitude: 0.5,
+      offset: 0.2
     }
   }
 
@@ -114,6 +114,10 @@ export class World extends THREE.Group {
     const maxCount = this.size.width * this.size.width * this.size.height;
     const mesh = new THREE.InstancedMesh(geometry, material, maxCount);
     mesh.count = 0;
+
+    // variation for simpleWorld
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
   
     // Add instances for each non-empty block
     const matrix = new THREE.Matrix4();
