@@ -33,6 +33,7 @@ scene.add(simpleWorld);
 
 // Add Player
 // const player = new Player(scene); // doesn't happen here
+// simplify and figure out how to instance players
 
 function setupLighting() {
     const sun = new THREE.DirectionalLight();
