@@ -53,6 +53,7 @@ const SPHERE_RADIUS = 0.2;
 
 const STEPS_PER_FRAME = 5;
 
+/*
 const sphereGeometry = new THREE.IcosahedronGeometry(SPHERE_RADIUS, 5);
 const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0xdede8d });
 
@@ -74,6 +75,7 @@ for (let i = 0; i < NUM_SPHERES; i++) {
     });
 
 }
+*/
 
 const worldOctree = new Octree();
 
