@@ -35,6 +35,8 @@ export class SimpleWorld extends THREE.Group {
     mesh.receiveShadow = true;
   
     this.add(mesh);
+    mesh.position.set(0, -20, 0);
+
   }
 
 }

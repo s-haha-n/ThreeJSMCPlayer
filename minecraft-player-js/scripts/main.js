@@ -5,35 +5,100 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SimpleWorld } from './simpleWorld';
 import { Player } from './player';
 import { setupUI } from './ui';
+import { Octree } from 'three/addons/math/Octree.js';
+import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
+import { Capsule } from 'three/addons/math/Capsule.js';
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+import { PlayerFPS } from './playerfps';
+
+
+const clock = new THREE.Clock();
+const container = document.getElementById( 'container' );
+
+// Scene setup
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog( 0x88ccee, 0, 50 );
+
+// Camera setup
+//const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+//orbitCamera.position.set(45, 45, 45);
+//orbitCamera.lookAt(0, 0, 0);
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.rotation.order = 'YXZ';
+
+//const controls = new OrbitControls(orbitCamera, renderer.domElement);
+//controls.target.set(16, 0, 16);
+//controls.update();
 
 // Renderer setup
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x80a0e0);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
+renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+container.appendChild(renderer.domElement);
+//document.body.appendChild(renderer.domElement);
 
-// Camera setup
-const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-orbitCamera.position.set(45, 45, 45);
-orbitCamera.lookAt(0, 0, 0);
+const stats = new Stats();
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.top = '0px';
+container.appendChild(stats.domElement);
 
-const controls = new OrbitControls(orbitCamera, renderer.domElement);
-controls.target.set(16, 0, 16);
-controls.update();
+const GRAVITY = 30;
 
-// Scene setup
-const scene = new THREE.Scene();
-const player = new Player(scene); 
+const NUM_SPHERES = 100;
+const SPHERE_RADIUS = 0.2;
+
+const STEPS_PER_FRAME = 5;
+
+const sphereGeometry = new THREE.IcosahedronGeometry(SPHERE_RADIUS, 5);
+const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0xdede8d });
+
+const spheres = [];
+let sphereIdx = 0;
+
+for (let i = 0; i < NUM_SPHERES; i++) {
+
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.castShadow = true;
+    sphere.receiveShadow = true;
+
+    scene.add(sphere);
+
+    spheres.push({
+        mesh: sphere,
+        collider: new THREE.Sphere(new THREE.Vector3(0, - 100, 0), SPHERE_RADIUS),
+        velocity: new THREE.Vector3()
+    });
+
+}
+
+const worldOctree = new Octree();
+
+const playerDirection = new THREE.Vector3();
+
+//const player = new Player(scene); 
 const simpleWorld = new SimpleWorld();
 simpleWorld.generate();
 scene.add(simpleWorld);
 
+const geometry = new THREE.BoxGeometry(100, 10, 100);
+const material = new THREE.MeshLambertMaterial();
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+mesh.position.set(0, -10, 0);
+
+worldOctree.fromGraphNode(mesh);
+
 // Add Player
 // const player = new Player(scene); // doesn't happen here
 // simplify and figure out how to instance players
+
+const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);
+const playerfps = new PlayerFPS(camera, playerCollider);
+playerfps.initControls();
 
 function setupLighting() {
     const sun = new THREE.DirectionalLight();
@@ -59,39 +124,62 @@ function setupLighting() {
 }
 
 // Events
-window.addEventListener('resize', () => {
-    // Resize camera aspect ratio and renderer size to the new window size
-    orbitCamera.aspect = window.innerWidth / window.innerHeight;
-    orbitCamera.updateProjectionMatrix();
-    player.camera.aspect = window.innerWidth / window.innerHeight;
-    player.camera.updateProjectionMatrix();
+window.addEventListener('resize', onWindowResize);
+
+function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
-// UI Setup
-const stats = new Stats();
-document.body.appendChild(stats.dom);
+}
+
+// not sure why this can't be in player class 
+function getForwardVector() {
+    camera.getWorldDirection(playerDirection);
+    playerDirection.y = 0;
+    playerDirection.normalize();
+
+    return playerDirection;
+}
+
+function getSideVector() {
+    camera.getWorldDirection(playerDirection);
+    playerDirection.y = 0;
+    playerDirection.normalize();
+    playerDirection.cross(camera.up);
+
+    return playerDirection;
+}
 
 // Render loop
 let previousTime = performance.now();
 function animate() {
-    requestAnimationFrame(animate);
 
-    const currentTime = performance.now();
-    const dt = (currentTime - previousTime) / 1000; // like time.deltatime in unity
+    const deltaTime = Math.min( 0.05, clock.getDelta() ) / STEPS_PER_FRAME;
 
-    player.update(dt);
+    //const currentTime = performance.now();
+    //const dt = (currentTime - previousTime) / 1000; // like time.deltatime in unity
 
-    //renderer.render(scene, camera);
+    //player.update(dt);
+    for (let i = 0; i < STEPS_PER_FRAME; i++) {
+
+        playerfps.update(deltaTime, worldOctree, GRAVITY);
+        playerfps.controls(deltaTime, getForwardVector, getSideVector);
+
+    }
+
+    renderer.render(scene, camera);
     //renderer.render(scene, player.camera);
-    renderer.render(scene, player.controls.isLocked ? player.camera : orbitCamera);
+    //renderer.render(scene, player.controls.isLocked ? player.camera : orbitCamera);
 
     stats.update();
 
-    previousTime = currentTime;
+    //previousTime = currentTime;
+    requestAnimationFrame(animate);
 }
 
-setupUI(simpleWorld, player, scene.sun);
+//setupUI(simpleWorld, player, scene.sun);
 setupLighting();
 animate();
