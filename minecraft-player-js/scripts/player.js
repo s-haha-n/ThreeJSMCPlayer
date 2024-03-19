@@ -13,8 +13,9 @@ export class Player {
     constructor(scene) {
         // Player body, why 'this'...
         this.geometry = new THREE.SphereGeometry(0.5);
-        this.material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        this.material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
         this.mesh = new THREE.Mesh(this.geometry, this.material);
+        this.mesh.castShadow = true;
 
         // how to child a mesh to some obj with offset like in unity
         this.camera.add(this.mesh);
