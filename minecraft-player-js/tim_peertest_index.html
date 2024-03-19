@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Multiplayer Sphere Example</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.1/peerjs.min.js"></script>
+  </head>
+  <body>
+
+    <div id="connectionControls">
+      <input type="text" id="roomId" />
+      <button id="joinRoom">Join room</button>
+    </div>
+
+    <div id="connectionStatus">
+      Peer ID: <span id="peerid"></span>
+      Connection status: <span id="status"></span>
+    </div>
+
+    <script type="module">
+
+      let conn;
+      let connected = false;
+      
+      // three.js
+
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 10);
+      camera.lookAt(0, 0, 0);
+
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const controller = new OrbitControls(camera, renderer.domElement);
+
+      const geometry = new THREE.BoxGeometry(2, 2, 2);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const box = new THREE.Mesh(geometry, material);
+      scene.add(box);
+
+      const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+      const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const otherPlayer = new THREE.Mesh(playerGeometry, playerMaterial);
+      otherPlayer.position.set(camera.position.x, camera.position.y, camera.position.z);
+      otherPlayer.rotation.set(camera.rotation._x, camera.rotation._y, camera.rotation._z);
+      scene.add(otherPlayer);
+
+      function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+
+        // send to peer
+        if (connected) {
+          conn.send(JSON.stringify({
+            position: camera.position,
+            rotation: camera.rotation
+          }));
+        }
+      }
+      animate();
+
+      // peer.js
+      let peer = new Peer(); // Create a new Peer instance
+
+      peer.on('open', (id) => {
+        console.log(id);
+        document.getElementById('peerid').innerText = id;
+        document.getElementById('status').innerText = 'waiting for connection...';
+      });
+      peer.on('error', (error) => {
+        console.log(error);
+      });
+      peer.on('connection', (connection) => {
+        // Receive connection request from another peer
+        conn = connection;
+        conn.on('open', () => {
+          document.getElementById('status').innerText = 'connected';
+          connected = true;
+        });
+
+        // Receive messages from other peer
+        conn.on('data', (data) => {
+          const other = JSON.parse(data);
+          otherPlayer.position.set(other.position.x, other.position.y, other.position.z);
+          otherPlayer.rotation.set(other.rotation._x, other.rotation._y, other.rotation._z);
+        });
+      });
+
+      document.getElementById("joinRoom").onclick = () => {
+        // Connect to another peer
+        conn = peer.connect(document.getElementById('roomId').value);
+        conn.on('open', () => {
+          document.getElementById('status').innerText = 'connected';
+          connected = true;
+        });
+
+        // Receive messages from other peer
+        conn.on('data', (data) => {
+          const other = JSON.parse(data);
+          otherPlayer.position.set(other.position.x, other.position.y, other.position.z);
+          otherPlayer.rotation.set(other.rotation._x, other.rotation._y, other.rotation._z);
+        });
+      };
+    </script>
+  </body>
+</html>

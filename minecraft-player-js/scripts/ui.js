@@ -18,13 +18,9 @@ export function setupUI(simpleWorld, player, sun) {
   simpleWorldFolder.add(simpleWorld.size, 'width', 8, 128, 1).name('Width');
   simpleWorldFolder.add(simpleWorld.size, 'height', 8, 32, 1).name('Height');
   
-  const terrainFolder = simpleWorldFolder.addFolder('Terrain');
-  terrainFolder.add(simpleWorld.params, 'seed', 0, 10000, 1).name('Seed');
-  terrainFolder.add(simpleWorld.params.terrain, 'scale', 10, 100).name('Scale');
-  terrainFolder.add(simpleWorld.params.terrain, 'magnitude', 0, 1).name('Magnitude');
-  terrainFolder.add(simpleWorld.params.terrain, 'offset', 0, 1).name('Offset');
-
-  gui.onChange((event) => {
+  /*
+    gui.onChange((event) => {
     simpleWorld.generate();
   });
+  */
 }
