@@ -7,7 +7,7 @@ import { Octree } from 'three/examples/jsm/math/Octree.js';
 //import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js'; // used for visuallizing collisions
 import { Capsule } from 'three/examples/jsm/math/Capsule.js';
 import { PlayerFPS } from '../js/playerfps';
-
+import NetworkManager from '../js/network-manager.js';
 
 const ThreeScene: React.FC = () => {
     const sceneRef = useRef<HTMLDivElement | null>(null);
@@ -21,6 +21,8 @@ const ThreeScene: React.FC = () => {
         // Scene setup
         const scene = new THREE.Scene();
         scene.fog = new THREE.Fog( 0x88ccee, 0, 50 );
+
+        const network = new NetworkManager(null, scene); // peerid can be null to start
         
         // Camera setup
         //const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
