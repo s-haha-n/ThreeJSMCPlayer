@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import Peer from 'peerjs';
+
 
 class NetworkManager {
   /**
