@@ -1,15 +1,19 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function HomePage() {
   
   const [worldId, setWorldId] = useState("");
+  const navigate = useNavigate();
   
   const enterWorld = () => {
     console.log("Entering world " + worldId);
+    navigate('/world', { state: { peerId:worldId }});
   }
 
   const createWorld = () => {
     console.log("Creating new world");
+    navigate('/world', { state: { peerId:'null' }});
   }
 
   return (
