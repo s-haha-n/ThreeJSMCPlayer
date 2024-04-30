@@ -20,7 +20,9 @@ export default function RegisterPage() {
     if (formInputs["password"].match(/\d+/g)) {
       passStrength[0] = true
     }
-    if (formInputs["password"].match(/\d+/g))
+    if (formInputs["password"].match(/\d+/g)){
+      
+    }
   }
 
   const confirmPassword = () => {

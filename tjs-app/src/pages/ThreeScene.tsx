@@ -8,9 +8,14 @@ import { Octree } from 'three/examples/jsm/math/Octree.js';
 import { Capsule } from 'three/examples/jsm/math/Capsule.js';
 import { PlayerFPS } from '../js/playerfps';
 import NetworkManager from '../js/network-manager.js';
+import { useLocation } from 'react-router-dom';
 
 const ThreeScene: React.FC = () => {
     const sceneRef = useRef<HTMLDivElement | null>(null);
+
+    const location = useLocation();
+    const myData = location.state || {};
+    console.log(myData.peerId);
 
     // Allows js to called in react, converts to ts
     useEffect(() => {
