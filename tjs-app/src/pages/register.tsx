@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Tooltip } from 'react-tooltip'
 
 export default function RegisterPage() {
 
@@ -10,9 +11,32 @@ export default function RegisterPage() {
     setFormInputs(values => ({...values, [name]: value}))
   }
 
+  const passStrength = [false,false,false,false];
+
+  const checkPassStrength = (e: React.ChangeEvent<HTMLInputElement>) => {
+    
+    setFormInputs(values => ({...values, [e.target.name]: e.target.value}))
+    const strength = 0;
+    if (formInputs["password"].match(/\d+/g)) {
+      passStrength[0] = true
+    }
+    if (formInputs["password"].match(/\d+/g))
+  }
+
+  const confirmPassword = () => {
+    if(formInputs["password"] === formInputs["passwordConf"]) {
+      return true
+    } else {
+      return false
+    }
+  }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(formInputs);
+    if ((confirmPassword())) {
+      console.log(formInputs);  
+    } else {
+      console.log("passwords didn't match");
+    }
   }
   
   return (
@@ -33,6 +57,12 @@ export default function RegisterPage() {
           value={formInputs.password || ""} 
           onChange={handleChange}
         />
+        <span 
+          data-tooltip-id="password-tip"
+          data-tooltip-content="Hello world!"
+          data-tooltip-place="right"
+          >?</span>
+        <Tooltip id="password-tip" />
         </label>
         <label>Confirm Password
         <input 
