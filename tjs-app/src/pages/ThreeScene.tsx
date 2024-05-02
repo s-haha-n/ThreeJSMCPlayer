@@ -14,11 +14,16 @@ const ThreeScene: React.FC = () => {
     const sceneRef = useRef<HTMLDivElement | null>(null);
 
     const location = useLocation();
-    const myData = location.state || {};
-    console.log(myData.peerId);
+    const myData = location.state || {peerId:null};
+    //console.log("myData.peerId = " + myData.peerId);
+
+    const material = new THREE.MeshLambertMaterial({ color: 0xbb0000 });
+    const object = new THREE.Mesh(new THREE.OctahedronGeometry(2, 1), material);
 
     // Allows js to called in react, converts to ts
     useEffect(() => {
+
+        var objectRotate = false;
 
         const clock = new THREE.Clock();
         //const container = document.getElementById( 'container' );
@@ -27,7 +32,8 @@ const ThreeScene: React.FC = () => {
         const scene = new THREE.Scene();
         scene.fog = new THREE.Fog( 0x88ccee, 0, 50 );
 
-        const network = new NetworkManager(null, scene); // peerid can be null to start
+        console.log("myData.peerId = " + myData.peerId);
+        const network = new NetworkManager(myData.peerId, scene); // peerid can be null to start
         
         // Camera setup
         //const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -96,13 +102,18 @@ const ThreeScene: React.FC = () => {
         simpleWorld.generate();
         scene.add(simpleWorld);
         
-        const geometry = new THREE.BoxGeometry(100, 10, 100);
-        const material = new THREE.MeshLambertMaterial();
+        const geometry = new THREE.BoxGeometry(10, 5, 5);
         const mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
         mesh.position.set(0, -10, 0);
-        
+
+        object.position.set(8, -10, 0);
+        scene.add(object);
+
+        worldOctree.fromGraphNode(object);
+
         worldOctree.fromGraphNode(mesh);
+        worldOctree.fromGraphNode(simpleWorld);
         
         // Add Player
         // const player = new Player(scene); // doesn't happen here
@@ -111,6 +122,23 @@ const ThreeScene: React.FC = () => {
         const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);
         const playerfps = new PlayerFPS(camera, playerCollider);
         playerfps.initControls();
+
+        // Player body, why 'this'...
+        const playerGeometry = new THREE.SphereGeometry(0.5);
+        const playerMaterial = new THREE.MeshLambertMaterial({ color: 0x00bb00});
+        const playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+        playerMesh.castShadow = true;
+
+        // how to child a mesh to some obj with offset like in unity
+        playerMesh.position.set(0, 0, -5);
+
+        camera.add(playerMesh);
+        scene.add(camera);
+
+        // to test if the playermesh is in the scene to be picked up by networkmanager
+        console.log(scene.getObjectById(playerMesh.id));
+
+        //worldOctree.fromGraphNode(playerMesh);
         
         function setupLighting() {
             const sun = new THREE.DirectionalLight();
@@ -156,9 +184,24 @@ const ThreeScene: React.FC = () => {
         // Render loop
         let previousTime = performance.now();
 
+        const handleinput = (e:any) => {
+            if (e.code === "KeyR") {
+                objectRotate = !objectRotate;
+                console.log(objectRotate);
+            }
+        }
+
+        document.body.addEventListener("keyup",handleinput);
+
         function animate() {
 
             const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
+
+            if(objectRotate) {
+                object.rotation.y -= GRAVITY * deltaTime;
+                object.position.y += GRAVITY * deltaTime;
+                console.log("?");
+            }
 
             //const currentTime = performance.now();
             //const dt = (currentTime - previousTime) / 1000; // like time.deltatime in unity
@@ -188,11 +231,13 @@ const ThreeScene: React.FC = () => {
         animate();
 
         return () => {
+            document.body.removeEventListener("keyup", handleinput);
             sceneRef.current?.removeChild(renderer.domElement);
         };
     }, []);
 
     return <div ref={sceneRef}></div>;
 };
+
 
 export default ThreeScene;

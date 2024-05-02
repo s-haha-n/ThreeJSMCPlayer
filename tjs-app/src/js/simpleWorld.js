@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const geometry = new THREE.BoxGeometry(100, 10, 100);
+const geometry = new THREE.BoxGeometry(30, 1, 30);
 const material = new THREE.MeshLambertMaterial();
 
 export class SimpleWorld extends THREE.Group {
@@ -35,7 +35,7 @@ export class SimpleWorld extends THREE.Group {
     mesh.receiveShadow = true;
   
     this.add(mesh);
-    mesh.position.set(0, -20, 0);
+    mesh.position.set(0, -15, 0);
 
   }
 
