@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 
 export class PlayerFPS {
+
     constructor(camera, collider) {
         this.camera = camera;
         this.collider = collider;
@@ -13,10 +14,13 @@ export class PlayerFPS {
         this.vector1 = new THREE.Vector3();
         this.vector2 = new THREE.Vector3();
         this.vector3 = new THREE.Vector3();
+
+
     }
 
     // Initialize player controls
     initControls() {
+
         document.addEventListener('keydown', event => {
             this.keyStates[event.code] = true;
         });

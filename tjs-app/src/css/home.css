@@ -1,0 +1,24 @@
+.SessionHandler {
+    position: absolute;
+    padding-top: 50px;
+    width: 100%;
+}
+
+.NewWorld {
+    padding-top: 25px;
+}
+
+canvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -9999;
+}
+
+button, input[type="button"], input[type="submit"] { 
+    color:rgb(255, 255, 255); 
+    background-color:rgb(48, 95, 235); 
+} 

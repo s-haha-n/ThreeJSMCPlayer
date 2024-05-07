@@ -7,6 +7,10 @@ class NetworkManager {
    * This class manages network objects, meaning the synchronization of data over the network.
    */
   constructor(peerid, scene) {
+    if(peerid == 'null')
+    {
+      peerid = null;
+    }
     this.connection = peerid;
     this._peer_connect();
     this.scene = scene;
