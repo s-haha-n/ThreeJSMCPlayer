@@ -8,21 +8,30 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.name;
     const value = e.target.value;
-    setFormInputs(values => ({...values, [name]: value}))
+    setFormInputs(values => ({...values, [name]: value}));
   }
-
-  const passStrength = [false,false,false,false];
 
   const checkPassStrength = (e: React.ChangeEvent<HTMLInputElement>) => {
     
-    setFormInputs(values => ({...values, [e.target.name]: e.target.value}))
-    const strength = 0;
-    if (formInputs["password"].match(/\d+/g)) {
-      passStrength[0] = true
+    setFormInputs(values => ({...values, [e.target.name]: e.target.value}));
+    var strength = 0;
+    //at least 8 characters
+    if (formInputs["password"].match(/.{8,}/g)) {
+      strength += 1;
     }
+    //at least one digit
     if (formInputs["password"].match(/\d+/g)){
-      
+      strength += 1;
     }
+    //at least one lowercase letter
+    if (formInputs["password"].match(/[a-z]+/g)){
+      strength += 1;
+    }
+    //at least one capital letter
+    if (formInputs["password"].match(/[A-Z]+/g)){
+      strength += 1;
+    }
+    return strength;
   }
 
   const confirmPassword = () => {

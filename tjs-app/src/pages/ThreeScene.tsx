@@ -14,8 +14,8 @@ const ThreeScene: React.FC = () => {
     const sceneRef = useRef<HTMLDivElement | null>(null);
 
     const location = useLocation();
-    const myData = location.state || {};
-    console.log(myData.peerId);
+    const myData = location.state || { peerId:null};
+    const peerId = myData.peerId;
 
     // Allows js to called in react, converts to ts
     useEffect(() => {
@@ -27,7 +27,7 @@ const ThreeScene: React.FC = () => {
         const scene = new THREE.Scene();
         scene.fog = new THREE.Fog( 0x88ccee, 0, 50 );
 
-        const network = new NetworkManager(null, scene); // peerid can be null to start
+        const network = new NetworkManager(peerId, scene); // peerid can be null to start
         
         // Camera setup
         //const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
