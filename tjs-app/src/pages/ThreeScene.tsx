@@ -9,6 +9,8 @@ import { Capsule } from 'three/examples/jsm/math/Capsule.js';
 import { PlayerFPS } from '../js/playerfps';
 import NetworkManager from '../js/network-manager.js';
 import { useLocation } from 'react-router-dom';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 const ThreeScene: React.FC = () => {
     const sceneRef = useRef<HTMLDivElement | null>(null);
@@ -17,7 +19,9 @@ const ThreeScene: React.FC = () => {
 
     const myData = location.state || {peerId:null};
     const material = new THREE.MeshLambertMaterial({ color: 0xbb0000 });
-    const object = new THREE.Mesh(new THREE.OctahedronGeometry(2, 1), material);
+    const netcube = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), material);
+
+    const offset = new THREE.Vector3(0, 0, -5);
 
     // Allows js to called in react, converts to ts
     useEffect(() => {
@@ -102,17 +106,20 @@ const ThreeScene: React.FC = () => {
         scene.add(simpleWorld);
         
         const geometry = new THREE.BoxGeometry(10, 5, 5);
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-        mesh.position.set(0, -10, 0);
+        const groundMesh = new THREE.Mesh(geometry, material);
+        scene.add(groundMesh);
+        groundMesh.position.set(0, -5, 0);
+        network.add(groundMesh);
 
-        object.position.set(8, -10, 0);
-        scene.add(object);
+        netcube.position.set(0, -3, -10);
+        scene.add(netcube);
+        network.add(netcube);
 
-        worldOctree.fromGraphNode(object);
+        //worldOctree.fromGraphNode(netcube);
 
-        worldOctree.fromGraphNode(mesh);
+        worldOctree.fromGraphNode(groundMesh);
         worldOctree.fromGraphNode(simpleWorld);
+        worldOctree.fromGraphNode(netcube);
         
         // Add Player
         // const player = new Player(scene); // doesn't happen here
@@ -127,16 +134,33 @@ const ThreeScene: React.FC = () => {
         const playerMaterial = new THREE.MeshLambertMaterial({ color: 0x00bb00});
         const playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
         playerMesh.castShadow = true;
+        scene.add(playerMesh);
 
-        // how to child a mesh to some obj with offset like in unity
-        playerMesh.position.set(0, 0, -5);
+        var textMesh = new THREE.Mesh();
 
-        camera.add(playerMesh);
+        // Create 3D text geometry
+        const loader = new FontLoader();
+        loader.load('https://cdn.rawgit.com/mrdoob/three.js/master/examples/fonts/helvetiker_regular.typeface.json', function(font) {
+            const textGeometry = new TextGeometry('Player 1', {
+                font: font,
+                size: 0.25,
+                height: 0.1,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.03,
+                bevelSize: 0.02,
+                bevelSegments: 5
+            });
+
+            const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            scene.add(textMesh);
+            //network.add(textMesh);
+        });
+
         scene.add(camera);
 
-        // to test if the playermesh is in the scene to be picked up by networkmanager
-        console.log(scene.getObjectById(playerMesh.id));
-
+        network.add(playerMesh); // playermesh position is set to camera position in animate loop
         //worldOctree.fromGraphNode(playerMesh);
         
         function setupLighting() {
@@ -185,8 +209,10 @@ const ThreeScene: React.FC = () => {
 
         const handleinput = (e:any) => {
             if (e.code === "KeyR") {
-                objectRotate = !objectRotate;
-                console.log(objectRotate);
+                //objectRotate = !objectRotate;
+                //console.log(objectRotate);
+                netcube.rotateY(20);
+                netcube.translateY(1);
             }
         }
 
@@ -196,11 +222,12 @@ const ThreeScene: React.FC = () => {
 
             const deltaTime = Math.min(0.05, clock.getDelta()) / STEPS_PER_FRAME;
 
+            /*
             if(objectRotate) {
-                object.rotation.y -= GRAVITY * deltaTime;
-                object.position.y += GRAVITY * deltaTime;
-                console.log("?");
+                netcube.rotation.y -= GRAVITY * deltaTime;
+                //object.position.y += GRAVITY * deltaTime;
             }
+            */
 
             //const currentTime = performance.now();
             //const dt = (currentTime - previousTime) / 1000; // like time.deltatime in unity
@@ -211,6 +238,9 @@ const ThreeScene: React.FC = () => {
                 playerfps.update(deltaTime, worldOctree, GRAVITY);
                 playerfps.controls(deltaTime, getForwardVector, getSideVector);
 
+                //playerMesh.position.copy(camera.position.add(offset));
+                playerMesh.position.copy(camera.position);
+                //textMesh.position.copy(camera.position);
             }
 
             renderer.render(scene, camera);

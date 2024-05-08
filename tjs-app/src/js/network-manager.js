@@ -1,6 +1,8 @@
 import Peer from 'peerjs';
 import * as THREE from 'three';
 
+// export const version = '0.0.2';
+
 class NetworkManager {
   /**
    * This class synchronizes meshes across the network to each peer using a look-up table.
@@ -9,9 +11,7 @@ class NetworkManager {
     /**
      * @peerid the peerid to connect to, can be null if creating a new room
      */
-    if (peerid === "null") {
-        peerid = null;
-    }
+    if (peerid === 'null') peerid = null;
     this.connection = peerid;
     this.scene = scene;
     this._peer_connect();
@@ -36,9 +36,9 @@ class NetworkManager {
     this.peerid = id;
     setTimeout(() => {
       for (const mesh of this.backlog) {
-        mesh.userData.origin = this._uuid(mesh);
-        this.tracked[mesh.userData.origin] = mesh;
+        this.add(mesh); // now we can add those objects into the scene
       }
+      this.backlog = [];
     }, 200);
 
     if (this.connection) {
@@ -104,6 +104,7 @@ class NetworkManager {
     mesh_info.position = [mesh.position.x, mesh.position.y, mesh.position.z];
     mesh_info.rotation = [mesh.rotation._x, mesh.rotation._y, mesh.rotation._z]; // always Euler XYZ
     mesh_info.scale = [mesh.scale.x, mesh.scale.y, mesh.scale.z];
+    // mesh_info.parent = mesh.parent ? this._uuid(mesh.parent) : null;
     return mesh_info;
   }
 
@@ -120,6 +121,7 @@ class NetworkManager {
     mesh.scale.set(mesh_info.scale[0], mesh_info.scale[1], mesh_info.scale[2]);
 
     mesh.userData.origin = mesh_info.uuid;
+    // mesh.userData.parent = mesh_info.parent; // just uuid for now, what if we never add parent to trackable?
     return mesh;
   }
 
@@ -146,10 +148,6 @@ class NetworkManager {
     if (mesh_diff.rotation) mesh.rotation.set(mesh_diff.rotation[0], mesh_diff.rotation[1], mesh_diff.rotation[2]);
     if (mesh_diff.scale   ) mesh.scale   .set(mesh_diff.scale[0],    mesh_diff.scale[1],    mesh_diff.scale[2]);
     return true;
-  }
-
-  onConnect(peerid) {
-    console.log(`Now connected to ${peerid}`);
   }
 
   _diff(source, target) {
@@ -222,6 +220,8 @@ class NetworkManager {
 
   _find_mesh_updates(snapshot) {
     const updates = [];
+    // find all parents and their rank, but only for valid tracked objects
+    // we put this in update because the parent may change at times
     Object.keys(this.tracked).forEach((uuid) => {
       const mesh_info = this._snap(this.tracked[uuid]);
       if (!snapshot[uuid]) {
@@ -233,11 +233,15 @@ class NetworkManager {
         if (mesh_diff !== null) {
           snapshot[uuid] = mesh_info;
           mesh_diff.uuid = uuid;
-          updates.push(mesh_diff); // we only care about the diff
+          updates.push(mesh_info); // we only care about the diff
         }
       }
     });
     return updates;
+  }
+
+  onConnect(peerid) {
+    console.log(`Now connected to ${peerid}`);
   }
 
   sendData(peerid) {
@@ -247,17 +251,26 @@ class NetworkManager {
     // compare to the last known snapshot of meshes that we already updated with
     if (!this.synced[peerid]) this.synced[peerid] = {};
     const snapshot = this.synced[peerid]; // these objects are in origin UUID names
-    const meshes_to_delete = this._find_mesh_deletes(snapshot);
+    // const meshes_to_delete = this._find_mesh_deletes(snapshot);
+    const meshes_to_delete = [];
     const meshes_to_update = this._find_mesh_updates(snapshot);
 
-    // push a set of differences to the sendData() hook
-    return {
+    const data = {
       upd: meshes_to_update,
       del: meshes_to_delete
     };
+
+    // push a set of differences to the sendData() hook
+    if (data.upd.length > 0 || data.del.length > 0)
+      console.log("Sending diff", data);
+
+    return data;
   }
 
   onData(peerid, data) {
+    if (data.upd.length > 0 || data.del.length > 0)
+      console.log("Received diff", data);
+
     // aggregate updates using scene
     if (!this.synced[peerid]) this.synced[peerid] = {};
     const snapshot = this.synced[peerid];
@@ -269,10 +282,11 @@ class NetworkManager {
       }
     });
 
-    if (data.upd && data.del) {
-      for (const mesh_info of data.del) {
+    if (data.upd.length > 0 || data.del.length > 0) {
+      for (const mesh_info of data.del) { // we are now deleting
         const mesh = this.tracked[mesh_info.uuid];
         if (mesh) {
+          console.log("Deleting:", mesh);
           if (scene_meshes[mesh.uuid]) {
             this.scene.remove(mesh);
           }
@@ -318,6 +332,13 @@ class NetworkManager {
       mesh.userData.origin = this._uuid(mesh);
       this.tracked[mesh.userData.origin] = mesh;
     }
+  }
+
+  remove(mesh) {
+    // only remove it from the tracker
+    // will need to replace all children connections with a virtual node
+    const uuid = this._uuid(mesh);
+
   }
 
 };
