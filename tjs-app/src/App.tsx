@@ -16,7 +16,7 @@ function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/world" element={<TjSWorld />} />
-          <Route path="/index.html" element={<HomePage/>} />
+          <Route path="/index.html" element={<LoginPage/>} />
         </Routes>
       </BrowserRouter>
     </div>

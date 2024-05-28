@@ -8,15 +8,17 @@ export default function HomePage() {
   
   const [worldId, setWorldId] = useState("");
   const navigate = useNavigate();
+  const name = sessionStorage.getItem('username');
+  console.log('username is ' + name);
   
   const enterWorld = () => {
     console.log("Entering world " + worldId);
-    navigate('/world', { state: { peerId:worldId }});
+    navigate('/world', { state: { peerId:worldId, username:name }});
   }
 
   const createWorld = () => {
     console.log("Creating new world");
-    navigate('/world', { state: { peerId:'null' }});
+    navigate('/world', { state: { peerId:null, username:name }});
   }
 
   return (
