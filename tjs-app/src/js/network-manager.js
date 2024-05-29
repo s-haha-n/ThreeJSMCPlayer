@@ -100,13 +100,12 @@ class NetworkManager {
       uuid: this._uuid(mesh)
     };
 
-    if (Object.prototype.toString.call(mesh) === '[object TextGeometry]') {
-      mesh_info.geometry.type = 'TextGeometry';
+    mesh_info.geometry.type = mesh.geometry.type;
+    if (mesh_info.geometry.type === "TextGeometry") {
       mesh_info.geometry.text = mesh.geometry.text;
       mesh_info.geometry.parameters = { ...mesh.geometry.parameters.options };
       delete mesh_info.geometry.parameters.font; // pass in the font in a different way (todo)
     } else {
-      mesh_info.geometry.type = mesh.geometry.type;
       mesh_info.geometry.scale = [mesh.geometry.scale.x, mesh.geometry.scale.y, mesh.geometry.scale.z];
       mesh_info.geometry.parameters = mesh.geometry.parameters; // !! this may cause some issues in the future as it has variable parameters
     }
@@ -135,6 +134,8 @@ class NetworkManager {
         font:           this._cached_font,
         size:           options.size,
         depth:          options.depth,
+        length:         options.length,
+        height:         options.height,
         curveSegments:  options.curveSegments,
         bevelEnabled:   options.bevelEnabled,
         bevelThickness: options.bevelThickness,
