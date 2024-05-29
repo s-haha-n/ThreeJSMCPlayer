@@ -1,7 +1,7 @@
 import Peer from 'peerjs';
 import * as THREE from 'three';
-
-// export const version = '0.0.2';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 class NetworkManager {
   /**
@@ -11,6 +11,13 @@ class NetworkManager {
     /**
      * @peerid the peerid to connect to, can be null if creating a new room
      */
+    // preload the font to make things easier (will need to change this later (todo))
+    this._cached_font = null;
+    const loader = new FontLoader();
+    loader.load('https://cdn.rawgit.com/mrdoob/three.js/master/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+      this._cached_font = font;
+    });
+
     if (peerid === 'null') peerid = null;
     this.connection = peerid;
     this.scene = scene;
@@ -93,8 +100,16 @@ class NetworkManager {
       uuid: this._uuid(mesh)
     };
 
-    mesh_info.geometry.type = mesh.geometry.type;
-    mesh_info.geometry.parameters = mesh.geometry.parameters; // !! this may cause some issues in the future as it has variable parameters
+    if (Object.prototype.toString.call(mesh) === '[object TextGeometry]') {
+      mesh_info.geometry.type = 'TextGeometry';
+      mesh_info.geometry.text = mesh.geometry.text;
+      mesh_info.geometry.parameters = { ...mesh.geometry.parameters.options };
+      delete mesh_info.geometry.parameters.font; // pass in the font in a different way (todo)
+    } else {
+      mesh_info.geometry.type = mesh.geometry.type;
+      mesh_info.geometry.scale = [mesh.geometry.scale.x, mesh.geometry.scale.y, mesh.geometry.scale.z];
+      mesh_info.geometry.parameters = mesh.geometry.parameters; // !! this may cause some issues in the future as it has variable parameters
+    }
     mesh_info.material.type = mesh.material.type;
     mesh_info.material.color = [ // what about alpha channel or other types of materials parameters? will have to see...
       mesh.material.color.r,
@@ -109,10 +124,32 @@ class NetworkManager {
   }
 
   _generate(mesh_info) {
-    const geometry = new THREE[mesh_info.geometry.type]();
-    Object.entries(mesh_info.geometry.parameters).forEach((entry) => {
-      geometry.parameters[entry[0]] = entry[1];
-    });
+    // load the geometry, this differs based on the object which we are interacting with
+    // for instance, the object could be a core object like cube or sphere, or it could be text, or gltf
+    let geometry;
+    if (mesh_info.geometry.type === 'TextGeometry') {
+      // for now use a predefined font style, in the future we will need to dynamically reference this style (todo)
+      const options = mesh_info.geometry.parameters;
+      while (this._cached_font === null) ; // BUG: this could block our program if our font never loads!
+      geometry = new TextGeometry(mesh_info.geometry.text, {
+        font:           this._cached_font,
+        size:           options.size,
+        depth:          options.depth,
+        curveSegments:  options.curveSegments,
+        bevelEnabled:   options.bevelEnabled,
+        bevelThickness: options.bevelThickness,
+        bevelSize:      options.bevelSize,
+        bevelSegments:  options.bevelSegments
+      });
+    } else {
+      geometry = new THREE[mesh_info.geometry.type]();
+      // scale is only used with primitive objects
+      geometry.scale.set(mesh_info.geometry.scale[0], mesh_info.geometry.scale[1], mesh_info.geometry.scale[2]);
+      Object.entries(mesh_info.geometry.parameters).forEach((entry) => {
+        geometry.parameters[entry[0]] = entry[1];
+      });
+    }
+
     const material = new THREE[mesh_info.material.type]();
     material.color.setRGB(mesh_info.material.color[0], mesh_info.material.color[1], mesh_info.material.color[2]);
     const mesh = new THREE.Mesh(geometry, material);
@@ -262,15 +299,12 @@ class NetworkManager {
 
     // push a set of differences to the sendData() hook
     if (data.upd.length > 0 || data.del.length > 0)
-      console.log("Sending diff", data);
 
     return data;
   }
 
   onData(peerid, data) {
     if (data.upd.length > 0 || data.del.length > 0)
-      console.log("Received diff", data);
-
     // aggregate updates using scene
     if (!this.synced[peerid]) this.synced[peerid] = {};
     const snapshot = this.synced[peerid];
@@ -335,10 +369,7 @@ class NetworkManager {
   }
 
   remove(mesh) {
-    // only remove it from the tracker
-    // will need to replace all children connections with a virtual node
-    const uuid = this._uuid(mesh);
-
+    console.log(`Removals are disabled, cannot remove ${mesh.uuid}`);
   }
 
 };
