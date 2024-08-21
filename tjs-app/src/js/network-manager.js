@@ -26,6 +26,9 @@ class NetworkManager {
     loader.load('https://cdn.rawgit.com/mrdoob/three.js/master/examples/fonts/helvetiker_regular.typeface.json', (font) => {
       this._cached_font = font;
     });
+
+    this.onnewmesh = (mesh) => {};
+    this.onupdatemesh = (mesh) => {};
   }
 
   _peer_connect() {
@@ -234,6 +237,7 @@ class NetworkManager {
       mesh.userData.origin = mesh_info.uuid;
       // mesh.userData.parent = mesh_info.parent; // just uuid for now, what if we never add parent to trackable?
 
+      this.onnewmesh(mesh); // experimental hook
       return mesh;
     } catch (error) {
       console.log(error);
@@ -257,6 +261,8 @@ class NetworkManager {
     if (mesh_diff.position) mesh.position.set(...mesh_diff.position);
     if (mesh_diff.rotation) mesh.rotation.set(...mesh_diff.rotation);
     if (mesh_diff.scale)    mesh.scale.set(...mesh_diff.scale);
+
+    this.onupdatemesh(mesh);
     return true;
   }
 
