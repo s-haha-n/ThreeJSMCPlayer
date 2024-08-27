@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 export default function LoginPage() {
 
   const navigate = useNavigate();
   const [formInputs, setFormInputs] = useState({username:"",password:""});
+  const [searchParams] = useSearchParams();
+  const worldId = searchParams.get("worldId");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.name;
@@ -16,7 +19,12 @@ export default function LoginPage() {
     e.preventDefault();
     sessionStorage.setItem('username',formInputs.username);
     console.log(formInputs);
-    navigate('/home');
+    if (worldId) {
+      console.log("Entering world " + worldId);
+      navigate('/world', { state: { peerId:worldId, username:formInputs.username }});
+    } else {
+      navigate('/home');
+    }
   }
   
   return (
