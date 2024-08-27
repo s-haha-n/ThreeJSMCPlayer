@@ -1,7 +1,7 @@
 import Peer from 'peerjs';
 import * as THREE from 'three';
-
-// export const version = '0.0.2';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 class NetworkManager {
   /**
@@ -11,6 +11,7 @@ class NetworkManager {
     /**
      * @peerid the peerid to connect to, can be null if creating a new room
      */
+
     if (peerid === 'null') peerid = null;
     this.connection = peerid;
     this.scene = scene;
@@ -19,6 +20,15 @@ class NetworkManager {
     this.tracked = {}; // [mesh_id] network trackable objects
     this.synced = {}; // [peerid (per client sync)][mesh_id] these are all children that are known to the cloud, synced per client
     this.backlog = [];
+
+    this._cached_font = null;
+    const loader = new FontLoader();
+    loader.load('https://cdn.rawgit.com/mrdoob/three.js/master/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+      this._cached_font = font;
+    });
+
+    this.onnewmesh = (mesh) => {};
+    this.onupdatemesh = (mesh) => {};
   }
 
   _peer_connect() {
@@ -75,6 +85,8 @@ class NetworkManager {
 
   ///////////////////// MESHES //////////////////////
 
+  // !BUG: it looks like the snapshot isn't preserving the information enough to detect a proper "diff"
+
   _uuid(mesh) {
     if (!this.peerid) return null;
     if (mesh.userData.origin) {
@@ -92,37 +104,145 @@ class NetworkManager {
       material: {},
       uuid: this._uuid(mesh)
     };
+    const discretize = (x) => Math.round(x * 10000) / 10000; // save on network bytes
 
     mesh_info.geometry.type = mesh.geometry.type;
-    mesh_info.geometry.parameters = mesh.geometry.parameters; // !! this may cause some issues in the future as it has variable parameters
+    const params = mesh.geometry.parameters;
+    switch (mesh_info.geometry.type) {
+      case "BoxGeometry":
+        mesh_info.geometry.args = [
+          params.width, params.height, params.depth,
+          params.widthSegments, params.heightSegments, params.depthSegments
+        ];
+        break;
+      case "CapsuleGeometry":
+        mesh_info.geometry.args = [
+          params.radius, params.length, params.capSegments, params.radialSegments
+        ];
+        break;
+      case "CircleGeometry":
+        mesh_info.geometry.args = [
+          params.radius, params.segments, params.thetaStart, params.thetaLength
+        ];
+        break;
+      case "ConeGeometry":
+        mesh_info.geometry.args = [
+          params.radius, params.height, params.radialSegments, params.heightSegments,
+          params.openEnded, params.thetaStart, params.thetaLength
+        ];
+        break;
+      case "CylinderGeometry":
+        mesh_info.geometry.args = [
+          params.radiusTop, params.radiusBottom, params.height,
+          params.radialSegments, params.heightSegments,
+          params.openEnded, params.thetaStart, params.thetaLength
+        ];
+        break;
+      case "PlaneGeometry":
+        mesh_info.geometry.args = [
+          params.width, params.height, params.widthSegments, params.heightSegments
+        ];
+        break;
+      case "RingGeometry":
+        mesh_info.geometry.args = [
+          params.innerRadius, params.outerRadius, params.thetaSegments, params.phiSegments,
+          params.thetaStart, params.thetaLength
+        ];
+        break;
+      case "SphereGeometry":
+        mesh_info.geometry.args = [
+          params.radius, params.widthSegments, params.heightSegments,
+          params.phiStart, params.phiLength, params.thetaStart, params.thetaLength
+        ];
+        break;
+      case "TorusGeometry":
+        mesh_info.geometry.args = [
+          params.radius, params.tube, params.radialSegments, params.tubularSegments
+        ];
+        break;
+      case "TorusKnotGeometry":
+        mesh_info.geometry.args = [
+          params.radius, params.tube, params.tubularSegments, params.radialSegments,
+          params.p, params.q
+        ];
+        break;
+      case "DodecahedronGeometry":
+      case "IcosahedronGeometry":
+      case "OctahedronGeometry":
+      case "TetrahedronGeometry":
+        mesh_info.geometry.args = [params.radius, params.detail];
+        break;
+      case "EdgesGeometry":
+      case "ExtrudeGeometry":
+      case "LatheGeometry":
+      case "PolyhedronGeometry":
+      case "ShapeGeometry":
+      case "TubeGeometry":
+      case "WireframeGeometry":
+        console.log(`${mesh_info.geometry.type} is not supported at this time`);
+        return null;
+      case "TextGeometry":
+        const options = { ...params.options };
+        delete options.font; // pass in the font in a different way (todo)
+        mesh_info.geometry.args = [params.options.text, options];
+        break;
+      default:
+        console.log(`An error occurred when attempting to inspect ${mesh_info.geometry.type}`);
+        return null;
+    }
+
     mesh_info.material.type = mesh.material.type;
-    mesh_info.material.color = [ // what about alpha channel or other types of materials parameters? will have to see...
-      mesh.material.color.r,
-      mesh.material.color.g,
-      mesh.material.color.b
-    ];
-    mesh_info.position = [mesh.position.x, mesh.position.y, mesh.position.z];
-    mesh_info.rotation = [mesh.rotation._x, mesh.rotation._y, mesh.rotation._z]; // always Euler XYZ
-    mesh_info.scale = [mesh.scale.x, mesh.scale.y, mesh.scale.z];
+    mesh_info.material.color = [
+      discretize(mesh.material.color.r),
+      discretize(mesh.material.color.g),
+      discretize(mesh.material.color.b)];
+
+    mesh_info.position = [
+      discretize(mesh.position.x),
+      discretize(mesh.position.y),
+      discretize(mesh.position.z)];
+    mesh_info.rotation = [
+      discretize(mesh.rotation._x),
+      discretize(mesh.rotation._y),
+      discretize(mesh.rotation._z)]; // always Euler XYZ, see if there is a way to ensure this
+    mesh_info.scale = [
+      discretize(mesh.scale.x),
+      discretize(mesh.scale.y),
+      discretize(mesh.scale.z)];
     // mesh_info.parent = mesh.parent ? this._uuid(mesh.parent) : null;
     return mesh_info;
   }
 
-  _generate(mesh_info) {
-    const geometry = new THREE[mesh_info.geometry.type]();
-    Object.entries(mesh_info.geometry.parameters).forEach((entry) => {
-      geometry.parameters[entry[0]] = entry[1];
-    });
-    const material = new THREE[mesh_info.material.type]();
-    material.color.setRGB(mesh_info.material.color[0], mesh_info.material.color[1], mesh_info.material.color[2]);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(mesh_info.position[0], mesh_info.position[1], mesh_info.position[2]);
-    mesh.rotation.set(mesh_info.rotation[0], mesh_info.rotation[1], mesh_info.rotation[2]);
-    mesh.scale.set(mesh_info.scale[0], mesh_info.scale[1], mesh_info.scale[2]);
+  async _generate(mesh_info) {
+    try {
+      let geometry;
+      if (mesh_info.geometry.type === "TextGeometry") {
+        while (!this._cached_font) { // blocks! careful...
+          console.log(`Still loading font at ${Date.now()}`);
+        }
+        const text = mesh_info.geometry.args[0];
+        const options = mesh_info.geometry.args[1];
+        options.font = this._cached_font;
+        geometry = new TextGeometry(text, options);
+      } else {
+        geometry = new THREE[mesh_info.geometry.type](...mesh_info.geometry.args);
+      }
+      const material = new THREE[mesh_info.material.type]();
+      material.color.setRGB(...mesh_info.material.color);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(...mesh_info.position);
+      mesh.rotation.set(...mesh_info.rotation);
+      mesh.scale.set(...mesh_info.scale);
 
-    mesh.userData.origin = mesh_info.uuid;
-    // mesh.userData.parent = mesh_info.parent; // just uuid for now, what if we never add parent to trackable?
-    return mesh;
+      mesh.userData.origin = mesh_info.uuid;
+      // mesh.userData.parent = mesh_info.parent; // just uuid for now, what if we never add parent to trackable?
+
+      this.onnewmesh(mesh); // experimental hook
+      return mesh;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
   }
 
   _update(mesh, mesh_diff) {
@@ -130,23 +250,19 @@ class NetworkManager {
     if (mesh_diff.geometry && mesh.geometry.type !== mesh_diff.geometry.type) return false; // we will have to create a new geometry and therefore mesh
     if (mesh_diff.material && mesh.material.type !== mesh_diff.material.type) return false; // we will have to create a new material and therefore mesh
 
-    // if it can be updated, update predefined properties such as color, position, rotation, and scale
-    if (mesh_diff.geometry) {
-      if (mesh_diff.geometry.parameters) {
-        Object.entries(mesh_diff.geometry.parameters).forEach((entry) => { // lets see if this works
-          mesh.geometry.parameters[entry[0]] = entry[1];
-        });
-      }
-    }
+    // geometry updates are ignored for now (todo)
 
+    // if it can be updated, update predefined properties such as color, position, rotation, and scale
     if (mesh_diff.material) {
       if (mesh_diff.material.color) {
-        mesh.material.color.setRGB(mesh_diff.material.color[0], mesh_diff.material.color[1], mesh_diff.material.color[2]);
+        mesh.material.color.setRGB(...mesh_diff.material.color);
       }
     }
-    if (mesh_diff.position) mesh.position.set(mesh_diff.position[0], mesh_diff.position[1], mesh_diff.position[2]);
-    if (mesh_diff.rotation) mesh.rotation.set(mesh_diff.rotation[0], mesh_diff.rotation[1], mesh_diff.rotation[2]);
-    if (mesh_diff.scale   ) mesh.scale   .set(mesh_diff.scale[0],    mesh_diff.scale[1],    mesh_diff.scale[2]);
+    if (mesh_diff.position) mesh.position.set(...mesh_diff.position);
+    if (mesh_diff.rotation) mesh.rotation.set(...mesh_diff.rotation);
+    if (mesh_diff.scale)    mesh.scale.set(...mesh_diff.scale);
+
+    this.onupdatemesh(mesh);
     return true;
   }
 
@@ -261,16 +377,10 @@ class NetworkManager {
     };
 
     // push a set of differences to the sendData() hook
-    if (data.upd.length > 0 || data.del.length > 0)
-      console.log("Sending diff", data);
-
     return data;
   }
 
   onData(peerid, data) {
-    if (data.upd.length > 0 || data.del.length > 0)
-      console.log("Received diff", data);
-
     // aggregate updates using scene
     if (!this.synced[peerid]) this.synced[peerid] = {};
     const snapshot = this.synced[peerid];
@@ -315,10 +425,12 @@ class NetworkManager {
           mesh = null;
         }
         if (!mesh) { // just in case we deleted it
-          mesh = this._generate(snapshot[mesh_diff.uuid]);
-          console.log("Adding:", mesh);
-          this.tracked[mesh_diff.uuid] = mesh;
-          this.scene.add(mesh);
+          this._generate(snapshot[mesh_diff.uuid], this.scene)
+          .then((mesh) => {
+            console.log("Adding:", mesh);
+            this.tracked[mesh_diff.uuid] = mesh;
+            this.scene.add(mesh);
+          });
         }
       }
     }
@@ -338,7 +450,6 @@ class NetworkManager {
     // only remove it from the tracker
     // will need to replace all children connections with a virtual node
     const uuid = this._uuid(mesh);
-
   }
 
 };

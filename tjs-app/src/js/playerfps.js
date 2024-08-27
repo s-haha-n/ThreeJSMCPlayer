@@ -30,7 +30,7 @@ export class PlayerFPS {
         });
 
         document.body.addEventListener('mousedown', () => {
-            document.body.requestPointerLock();
+            //document.body.requestPointerLock();
             this.mouseTime = performance.now();
         });
 
@@ -75,9 +75,24 @@ export class PlayerFPS {
         this.camera.position.copy(this.collider.end);
     }
 
+    // Function to toggle pointer lock
+    togglePointerLock() {
+        console.log(document.pointerLockElement);
+        if (document.pointerLockElement === document.body) {
+            // If the pointer is currently locked, exit the pointer lock
+            document.exitPointerLock();
+        } else {
+            // Otherwise, request the pointer lock
+            document.body.requestPointerLock();
+        }
+    }
+
     // Handle player controls
     controls(deltaTime, getForwardVector, getSideVector) {
         const speedDelta = deltaTime * (this.onFloor ? 25 : 8);
+        if (this.keyStates['KeyQ']) {
+            this.togglePointerLock();
+        }
         if (this.keyStates['KeyW']) {
             this.velocity.add(getForwardVector().multiplyScalar(speedDelta));
         }
