@@ -182,9 +182,7 @@ class NetworkManager {
         console.log(`${mesh_info.geometry.type} is not supported at this time`);
         return null;
       case "TextGeometry":
-        const options = { ...params.options };
-        delete options.font; // pass in the font in a different way (todo)
-        mesh_info.geometry.args = [params.options.text, options];
+        mesh_info.geometry.args = { ...params.options };
         break;
       default:
         console.log(`An error occurred when attempting to inspect ${mesh_info.geometry.type}`);
@@ -220,9 +218,9 @@ class NetworkManager {
         while (!this._cached_font) { // blocks! careful...
           console.log(`Still loading font at ${Date.now()}`);
         }
-        const text = mesh_info.geometry.args[0];
-        const options = mesh_info.geometry.args[1];
-        options.font = this._cached_font;
+        const text = mesh_info.geometry.args.text || '';
+        const font = mesh_info.geometry.args.font || null;
+        options.font = this._cached_font; // temporary: override the font with the cached version
         geometry = new TextGeometry(text, options);
       } else {
         geometry = new THREE[mesh_info.geometry.type](...mesh_info.geometry.args);
