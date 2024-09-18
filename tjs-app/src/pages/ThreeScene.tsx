@@ -178,7 +178,7 @@ const ThreeScene: React.FC = () => {
                 bevelSegments: 5
                 // todo: @s-haha-n add the options here for adding to the network.
                 // text: myData.username,
-                // font: 'https://cdn.rawgit.com/mrdoob/three.js/master/examples/fonts/helvetiker_regular.typeface.json
+                // font_family: 'https://cdn.rawgit.com/mrdoob/three.js/master/examples/fonts/helvetiker_regular.typeface.json'
             });
 
             const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
